@@ -1,0 +1,6 @@
+
+CompileFlags:
+  Add: 
+    - -I../deps/mlib/
+    - -DDEBUG
+    - -Wall

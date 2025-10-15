@@ -1,0 +1,9 @@
+[submodule "sources/subtitles"]
+	path = sources/subtitles
+	url = https://github.com/Ajatt-Tools/kitsunekko-mirror
+[submodule "deps/mlib"]
+	path = deps/mlib
+	url = https://github.com/P-p-H-d/mlib
+[submodule "subtitleparsing/ass-parser"]
+	path = subtitleparsing/ass-parser
+	url = https://github.com/eush77/ass-parser
