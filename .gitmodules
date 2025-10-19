@@ -7,3 +7,4 @@
 [submodule "subtitleparsing/ass-parser"]
 	path = subtitleparsing/ass-parser
 	url = https://github.com/eush77/ass-parser
+
