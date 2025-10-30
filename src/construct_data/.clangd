@@ -1,0 +1,10 @@
+
+CompileFlags:
+  Add: 
+    - -I../../deps/mlib
+    - -I../../deps/loose-headers/
+    - lpq-fe
+    - -DDEBUG
+    - -Wall
+    # - -I/usr/include/glib-2.0 
+    # - -I/usr/lib/x86_64-linux-gnu/glib-2.0/include
