@@ -27,14 +27,12 @@ CREATE TABLE IF NOT EXISTS training_data.CharacterCounts (
 );
 
 -- Update as we go along.
-DROP VIEW IF EXISTS training_data.AllTextSources;
-
 CREATE VIEW training_data.AllTextSources AS
 SELECT
     id,
     data,
-    'Subtitle' AS source_name,
-    0 AS source_id
+    'Subtitle' AS sourceName,
+    0 AS sourceId
 FROM
     training_data.subtitledata
 UNION ALL
@@ -42,22 +40,22 @@ SELECT
     id,
     data,
     'Aozora' AS sourceName,
-    1 AS source_id
+    1 AS sourceId
 FROM
     training_data.AozoraBooks;
 
-CREATE OR REPLACE PROCEDURE Insert_Into_CharacterCount (p_char text, p_count numeric, p_isKanji boolean, p_tble numeric, p_id numeric)
+CREATE OR REPLACE PROCEDURE Insert_Into_CharacterCount (p_char numeric, p_count numeric, p_isKanji boolean, p_table numeric, p_id numeric)
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF p_tble = 1 THEN
+    IF p_table = 1 THEN
         INSERT INTO training_data.CharacterCounts (char, count, isKanji, subtitleId)
             VALUES (p_char, p_count, p_isKanji, p_id);
-    ELSIF p_tble = 2 THEN
+    ELSIF p_table = 2 THEN
         INSERT INTO training_data.CharacterCounts (char, count, isKanji, aozoraId)
             VALUES (p_char, p_count, p_isKanji, p_id);
     ELSE
-        RAISE EXCEPTION 'Unknown table type %', p_tble;
+        RAISE EXCEPTION 'Unknown table type %', p_table;
     END IF;
 END;
 $$;

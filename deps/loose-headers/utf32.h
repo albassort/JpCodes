@@ -50,9 +50,11 @@
 
 #pragma once
 #include <stdint.h>
+#include <stdio.h>
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 #if defined(__cplusplus)
 #define C_UTF8_EMPTY_VAL                                             \
@@ -109,10 +111,21 @@ c_utf8_buf_to_utf32_char_b (uint32_t* out_char32,
   /* Assume a four-byte character and load four bytes. Unused bits are
    * shifted out.
    */
+  if (s[0] == 0)
+  {
+    return -1;
+  }
+  // Modified to fix overflow when 4 > strlen(string)
   *out_char32 = (uint32_t) (s[0] & masks[len]) << 18;
-  *out_char32 |= (uint32_t) (s[1] & 0x3f) << 12;
-  *out_char32 |= (uint32_t) (s[2] & 0x3f) << 6;
-  *out_char32 |= (uint32_t) (s[3] & 0x3f) << 0;
+  for (int i = 1; i != 4; i++)
+  {
+    if (s[i] == 0)
+    {
+      break;
+    }
+    int shift = 12 - ((i - 1) * 6);
+    *out_char32 |= (uint32_t) (s[i] & 0x3f) << shift;
+  }
   *out_char32 >>= shiftc[len];
 
   if (opt_error)
@@ -133,7 +146,6 @@ c_utf8_buf_to_utf32_char_b (uint32_t* out_char32,
     *e ^= 0x2a; // top two bits of each tail byte correct?
     *e >>= shifte[len];
   }
-
   return len + !len;
 }
 
@@ -233,22 +245,105 @@ c_utf32_char_to_utf8_buf (char* out_utf8_buf,
 }
 #endif
 
-void
-str_to_utf32 (char* string, int* length, uint32_t** outp)
+// Caroline Marceano's additions.
+//
+C_UTF8_INLINE_FUNC uint8_t
+get_char_utf8_length (char* str)
 {
-
-  int strl = strlen (string);
-  *length = (strl + 1) * 4;
-  *outp = (uint32_t*) calloc (4, strl + 1);
-  char* c;
-  int i = 0;
-  int utf8c = 0;
-  int error = 0;
-  while (strl > i)
+  int current_bit = 7;
+  int size = 0;
+  for (uint32_t i = 0; i != 6; i++)
   {
-    int length =
-      c_utf8_buf_to_utf32_char_b (*outp + utf8c, string + i, &error);
-    i += length;
-    utf8c++;
+    int current_mask = 1 << current_bit;
+    if (!(str[0] & current_mask))
+    {
+      size = i;
+      break;
+    }
+    // if 11111000
+    if (i == 5)
+    {
+      return -1;
+    }
+
+    current_bit--;
   }
+
+  if (size == 0)
+  {
+    return 1;
+  };
+
+  int i = 1;
+  // While loop not for loop because, the condition needs to be at the
+  // end of the loop.
+  while (true)
+  {
+    uint8_t c = str[i];
+    int msb = 1 << 7;
+    int smsb = 1 << 6;
+
+    bool valid = ((c & msb) && !(c & smsb));
+
+    if (!valid)
+    {
+      return -2;
+    }
+
+    i++;
+    if (i >= size)
+    {
+      break;
+    }
+  }
+
+  return size;
+}
+
+C_UTF8_INLINE_FUNC uint32_t
+utf8_to_utf32_length (char* string)
+{
+  char* pos = string;
+  int char_length;
+  uint32_t totalLength = 0;
+  while (true)
+  {
+    if (pos[0] == 0)
+    {
+      break;
+    }
+    char_length = get_char_utf8_length (pos);
+    // skip over invalid characters
+    if (0 >= char_length)
+    {
+      pos += 1;
+    }
+    else
+    {
+      totalLength += 1;
+      pos += char_length;
+    }
+  }
+  return totalLength;
+}
+
+C_UTF8_INLINE_FUNC uint32_t
+str_to_utf32 (char* string, uint32_t* outp)
+{
+  uint32_t* writePos = outp;
+  char* readPos = string;
+  while (true)
+  {
+
+    if (readPos[0] == 0)
+    {
+      writePos[0] = 0;
+      break;
+    }
+    int length = c_utf8_buf_to_utf32_char_b (writePos, readPos, 0);
+    readPos += length;
+    writePos += 1;
+  }
+
+  return (writePos - outp);
 };
