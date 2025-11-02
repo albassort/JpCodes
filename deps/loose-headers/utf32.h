@@ -251,21 +251,16 @@ C_UTF8_INLINE_FUNC uint8_t
 get_char_utf8_length (char* str)
 {
   int current_bit = 7;
-  int size = 0;
-  for (uint32_t i = 0; i != 6; i++)
+  int size = -1;
+  for (int i = 0; i != 5; i++)
   {
     int current_mask = 1 << current_bit;
+
     if (!(str[0] & current_mask))
     {
       size = i;
       break;
     }
-    // if 11111000
-    if (i == 5)
-    {
-      return -1;
-    }
-
     current_bit--;
   }
 

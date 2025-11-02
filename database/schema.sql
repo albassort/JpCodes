@@ -17,14 +17,26 @@ CREATE TABLE IF NOT EXISTS training_data.AozoraBooks (
 
 CREATE TABLE IF NOT EXISTS training_data.CharacterCounts (
     id serial PRIMARY KEY,
-    character text CHECK (char_length(character) = 1) NOT NULL,
+    char numeri,
     count decimal NOT NULL,
     isKanji boolean NOT NULL,
     -- extendable
-    aozoraId int REFERENCES training_data.AozoraBooks (id) UNIQUE,
-    subtitleId int REFERENCES training_data.SubtitleData (id) UNIQUE,
-    CHECK (aozoraId IS NOT NULL AND subtitleId IS NOT NULL)
+    aozoraId int REFERENCES training_data.AozoraBooks (id),
+    subtitleId int REFERENCES training_data.SubtitleData (id),
+    CHECK ((aozoraId IS NOT NULL) <> (subtitleId IS NOT NULL))
 );
+
+CREATE TABLE IF NOT EXISTS training_data.KanjiSequences (
+    id serial PRIMARY KEY,
+    characterSequence numeric[],
+    count decimal NOT NULL,
+    -- extendable
+    aozoraId int REFERENCES training_data.AozoraBooks (id),
+    subtitleId int REFERENCES training_data.SubtitleData (id),
+    CHECK ((aozoraId IS NOT NULL) <> (subtitleId IS NOT NULL))
+);
+
+CREATE INDEX IF NOT EXISTS ccidx ON CharacterCounts (char, count);
 
 -- Update as we go along.
 CREATE VIEW training_data.AllTextSources AS
@@ -48,10 +60,10 @@ CREATE OR REPLACE PROCEDURE Insert_Into_CharacterCount (p_char numeric, p_count 
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF p_table = 1 THEN
+    IF p_table = 0 THEN
         INSERT INTO training_data.CharacterCounts (char, count, isKanji, subtitleId)
             VALUES (p_char, p_count, p_isKanji, p_id);
-    ELSIF p_table = 2 THEN
+    ELSIF p_table = 1 THEN
         INSERT INTO training_data.CharacterCounts (char, count, isKanji, aozoraId)
             VALUES (p_char, p_count, p_isKanji, p_id);
     ELSE
@@ -59,4 +71,41 @@ BEGIN
     END IF;
 END;
 $$;
+
+CREATE OR REPLACE PROCEDURE Insert_Into_KanjiSequences (p_chars numeric[], p_count numeric, p_table numeric, p_id numeric)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF p_table = 0 THEN
+        INSERT INTO training_data.KanjiSequences (characterSequence, count, subtitleId)
+            VALUES (p_char, p_count, p_isKanji, p_id);
+    ELSIF p_table = 1 THEN
+        INSERT INTO training_data.KanjiSequences (char, count, isKanji, aozoraId)
+            VALUES (p_char, p_count, p_isKanji, p_id);
+    ELSE
+        RAISE EXCEPTION 'Unknown table type %', p_table;
+    END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION Array_To_Int (arr numeric[])
+    RETURNS text
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RETURN array_to_string(ARRAY (
+            SELECT
+                chr(num::int)
+            FROM unnest(arr) AS num), '');
+END;
+$$;
+
+CREATE MATERIALIZED VIEW training_data.CharacterCountsSums AS
+SELECT
+    char,
+    SUM(count) AS sum_count
+FROM
+    training_data.CharacterCounts
+GROUP BY
+    char;
 

@@ -1,6 +1,8 @@
 
 CompileFlags:
   Add: 
+    - -x 
+    - c
     - -I../../deps/mlib
     - -I../../deps/loose-headers/
     - lpq-fe
