@@ -8,6 +8,13 @@
 #include <omp.h>
 #include <arpa/inet.h>
 
+bool
+is_kana (int c)
+{
+  return ((c >= 0x3040 && 0x309F >= c) ||
+          (c >= 0x30A0 && 0x30FF >= c));
+}
+
 DICT_DEF2 (character_count, uint32_t, uint32_t);
 struct OccurenceResult
 {
@@ -17,8 +24,13 @@ struct OccurenceResult
   uint32_t* input_data;
 };
 
-// A single allocated buffer containing the all the data, several
-// gigabytes
+#define NUMBER_OF_SOURCES 2
+
+static const char* sources[NUMBER_OF_SOURCES] = { "subtitleId",
+                                                  "aozoraId" };
+
+// A single allocated buffer containing
+// the all the data, several gigabytes
 uint32_t* input_data_global;
 struct OccurenceResult* output;
 
@@ -52,6 +64,19 @@ setup_conn (PGconn** conn)
 
   return true;
 };
+
+inline static void
+handle_query_outcome (PGconn** conn, PGresult** res)
+{
+  ExecStatusType status = PQresultStatus (*res);
+  if (status != PGRES_TUPLES_OK && status != PGRES_COMMAND_OK)
+  {
+    fprintf (stderr, "Query failed: %s\n", PQerrorMessage (*conn));
+    PQclear (*res);
+    PQfinish (*conn);
+    exit (1);
+  }
+}
 
 inline static void
 query_all_text_sources (PGconn** conn, PGresult** res)

@@ -142,11 +142,17 @@ add_files (const char* dir_path, paths_t* paths)
     }
     else
     {
-      if (!strstr (entry->d_name, "srt"))
-      {
+      char* d_name = entry->d_name;
 
+      int length = strlen (d_name);
+      printf ("%s\n", d_name + length - 4);
+
+      if (length < 4)
         continue;
-      }
+
+      if (strcmp (d_name + length - 4, ".srt") != 0)
+        continue;
+
       char* buf;
       asprintf (&buf, "%s/%s", dir_path, entry->d_name);
       paths_push_back (*paths, buf);

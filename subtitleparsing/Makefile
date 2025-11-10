@@ -6,5 +6,5 @@ all: SrtToPostgres
 
 SrtToPostgres: source = srt.c
 
-SrtToPostgres: 
+SrtToPostgres: ./srt.c
 	cc -o $@ $(source) $(IFLAGS) $(CFLAGS) $(LDFLAGS)

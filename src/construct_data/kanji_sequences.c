@@ -120,7 +120,7 @@ commit_occuerences (PGconn** conn_ptr, int rows)
   }
 
 #pragma omp parallel for
-  for (uint32_t i = 0; i != rows; i++)
+  for (uint32_t i = 0; i < rows; i++)
   {
 
     uint64_t totalSize = 0;
@@ -251,8 +251,10 @@ commit_occuerences (PGconn** conn_ptr, int rows)
 
   for (int i = 0; i != num_threads; i++)
   {
-
+    printf ("committing");
     PGresult* res = PQexec (conns[i], "COMMIT;");
+
+    handle_query_outcome (&conns[i], &res);
     PQclear (res);
   }
 }
@@ -266,6 +268,7 @@ main ()
   query_all_text_sources (&conn, &data);
 
   int rows = unpack_all_text_sources (&conn, &data);
+
   commit_occuerences (&conn, rows);
 
   free (input_data_global);

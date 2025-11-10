@@ -17,12 +17,30 @@ CREATE TABLE IF NOT EXISTS training_data.AozoraBooks (
 
 CREATE TABLE IF NOT EXISTS training_data.CharacterCounts (
     id serial PRIMARY KEY,
-    char numeri,
+    char numeric,
     count decimal NOT NULL,
     isKanji boolean NOT NULL,
     -- extendable
     aozoraId int REFERENCES training_data.AozoraBooks (id),
     subtitleId int REFERENCES training_data.SubtitleData (id),
+    CONSTRAINT depup_prevention_aozora_1 UNIQUE (aozoraId, char),
+    CONSTRAINT depup_prevention_subtitle_1 UNIQUE (subtitleId, char),
+    CHECK ((aozoraId IS NOT NULL) <> (subtitleId IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS training_data.CharacterSequences (
+    id serial,
+    --
+    first numeric NOT NULL,
+    middle numeric NOT NULL,
+    third numeric NOT NULL,
+    --
+    count decimal NOT NULL,
+    -- extendable
+    aozoraId int REFERENCES training_data.AozoraBooks (id),
+    subtitleId int REFERENCES training_data.SubtitleData (id),
+    CONSTRAINT depup_prevention_aozora_2 UNIQUE (aozoraId, FIRST, middle, third),
+    CONSTRAINT depup_prevention_subtitle_2 UNIQUE (subtitleId, FIRST, middle, third),
     CHECK ((aozoraId IS NOT NULL) <> (subtitleId IS NOT NULL))
 );
 
@@ -33,10 +51,12 @@ CREATE TABLE IF NOT EXISTS training_data.KanjiSequences (
     -- extendable
     aozoraId int REFERENCES training_data.AozoraBooks (id),
     subtitleId int REFERENCES training_data.SubtitleData (id),
+    CONSTRAINT depup_prevention_aozora_3 UNIQUE (aozoraId, characterSequence),
+    CONSTRAINT depup_prevention_subtitle_3 UNIQUE (subtitleId, characterSequence),
     CHECK ((aozoraId IS NOT NULL) <> (subtitleId IS NOT NULL))
 );
 
-CREATE INDEX IF NOT EXISTS ccidx ON CharacterCounts (char, count);
+CREATE INDEX IF NOT EXISTS ccidx ON training_data.CharacterCounts (char, count);
 
 -- Update as we go along.
 CREATE VIEW training_data.AllTextSources AS
@@ -78,10 +98,10 @@ AS $$
 BEGIN
     IF p_table = 0 THEN
         INSERT INTO training_data.KanjiSequences (characterSequence, count, subtitleId)
-            VALUES (p_char, p_count, p_isKanji, p_id);
+            VALUES (p_chars, p_count, p_id);
     ELSIF p_table = 1 THEN
-        INSERT INTO training_data.KanjiSequences (char, count, isKanji, aozoraId)
-            VALUES (p_char, p_count, p_isKanji, p_id);
+        INSERT INTO training_data.KanjiSequences (char, count, aozoraId)
+            VALUES (p_chars, p_count, p_id);
     ELSE
         RAISE EXCEPTION 'Unknown table type %', p_table;
     END IF;
@@ -108,4 +128,16 @@ FROM
     training_data.CharacterCounts
 GROUP BY
     char;
+
+SELECT
+    *
+FROM
+    training_data.alltextsources AS ats
+    LEFT JOIN training_data.charactersequences AS cs ON ((cs.aozoraId = ats.id
+                AND sourceName = 'Aozora')
+            OR (cs.subtitleId = ats.id
+                AND sourceName = 'Subtitle'))
+WHERE
+    cs.id IS NULL
+    AND length(data) > 0;
 

@@ -59,7 +59,7 @@ commit_occuerences (PGconn** conn_ptr, int rows)
   printf ("number threads: %d\n", num_threads);
 
 #pragma omp parallel for
-  for (int i = 0; i != rows; i++)
+  for (int i = 0; i < rows; i++)
   {
     PGresult* res;
     int thread_id = omp_get_thread_num ();
